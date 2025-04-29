@@ -7,7 +7,7 @@ import (
 
 func main() {
 
-	conf := digger.Config{SourceDirectory: `c:\tmp\007`}
+	conf := digger.Config{SourceDirectory: `C:\tmp\007\MedgenInput`}
 
 	d, err := digger.New(conf, []string{})
 	if err != nil {
@@ -16,7 +16,7 @@ func main() {
 
 	orderNumbers, err := d.FindNewOrderNumbers()
 	if err != nil {
-		return
+		panic(err)
 	}
 
 	for _, number := range orderNumbers {

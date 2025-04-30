@@ -3,7 +3,7 @@ package digger
 import "testing"
 
 func BenchmarkExtractOrderNumbers(b *testing.B) {
-	filename := `C:\tmp\007\MedgenInput\{00d10210-af6f-4ca9-804d-0ee859e7a8ba}.hl7`
+	filename := `test/test.hl7`
 	expected := "203334805"
 
 	b.ResetTimer()

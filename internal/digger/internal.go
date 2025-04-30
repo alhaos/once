@@ -20,7 +20,7 @@ func extractOrderNumber(filename string) (string, error) {
 	lines := bytes.Split(content, []byte{sep})
 
 	for _, line := range lines {
-		if bytes.HasPrefix(line, []byte("ORC")) || bytes.HasPrefix(line, []byte("OBR")) {
+		if bytes.HasPrefix(line, []byte("ORC")) {
 			fields := bytes.Split(line, []byte("|"))
 
 			if len(fields) < 2 {

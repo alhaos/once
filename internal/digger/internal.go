@@ -1,37 +1,44 @@
 package digger
 
 import (
+	"bufio"
 	"bytes"
+	"log"
 	"os"
 )
 
 const sep byte = 0x0d
 
-// extractOrderNumber extract order number from file
-func extractOrderNumber(filename string) (string, error) {
+func extractOrderNumber(path string) (string, error) {
 
-	var orderNumber []byte
-
-	content, err := os.ReadFile(filename)
+	var file, err = os.Open(path)
 	if err != nil {
-		return "", err
+		log.Fatal(err)
 	}
+	defer file.Close()
 
-	lines := bytes.Split(content, []byte{sep})
+	reader := bufio.NewReader(file)
 
-	for _, line := range lines {
-		if bytes.HasPrefix(line, []byte("ORC")) {
-			fields := bytes.Split(line, []byte("|"))
+	for {
 
-			if len(fields) < 2 {
-				continue
-			}
+		b, err := reader.ReadBytes(0x0d)
+		if err != nil {
+			return "", err
+		}
 
-			if len(fields[2]) > 0 {
-				orderNumber = fields[2]
-			}
+		if !bytes.HasPrefix(b, []byte("ORC")) {
+			continue
+		}
+
+		var fields = bytes.Split(b, []byte("|"))
+
+		if len(fields) < 2 {
+			continue
+		}
+
+		if len(fields[2]) > 0 {
+			return string(fields[2]), err
 		}
 	}
-
-	return string(orderNumber), err
+	return "", err
 }

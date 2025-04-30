@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 // Config is digger config
@@ -43,16 +44,26 @@ func (d *Digger) FindNewOrderNumbers() ([]string, error) {
 
 	newOrderNumbers := make([]string, len(entries))
 
+	wg := sync.WaitGroup{}
+
 	for i, entry := range entries {
-		orderNumber, err := extractOrderNumber(filepath.Join(d.config.SourceDirectory, entry.Name()))
-		if err != nil {
-			return nil, err
-		}
-		newOrderNumbers[i] = orderNumber
+
+		wg.Add(1)
+		go func(idx int, e os.DirEntry) {
+			defer wg.Done()
+			orderNumber, err := extractOrderNumber(filepath.Join(d.config.SourceDirectory, e.Name()))
+			if err != nil {
+				panic(err)
+			}
+			newOrderNumbers[idx] = orderNumber
+		}(i, entry)
+
 		if i%100 == 0 {
 			fmt.Println(i)
 		}
 	}
+
+	wg.Wait()
 
 	return newOrderNumbers, nil
 }

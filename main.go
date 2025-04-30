@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"once/internal/digger"
 	"os"
 	"runtime/pprof"
+	"time"
 )
 
 func main() {
@@ -19,7 +21,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	t := time.Now()
 	err = pprof.StartCPUProfile(f)
 	if err != nil {
 		panic(err)
@@ -29,7 +31,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	fmt.Println(time.Since(t).String())
 	defer pprof.StopCPUProfile()
 
 }

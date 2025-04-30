@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"once/internal/digger"
+	"os"
+	"runtime/pprof"
 )
 
 func main() {
@@ -14,13 +15,21 @@ func main() {
 		panic(err)
 	}
 
-	orderNumbers, err := d.FindNewOrderNumbers()
+	f, err := os.Create("outCpuProf.pprof")
 	if err != nil {
 		panic(err)
 	}
 
-	for _, number := range orderNumbers {
-		fmt.Println(number)
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		panic(err)
 	}
+
+	_, err = d.FindNewOrderNumbers()
+	if err != nil {
+		panic(err)
+	}
+
+	defer pprof.StopCPUProfile()
 
 }

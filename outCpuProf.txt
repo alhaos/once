@@ -1,0 +1,1158 @@
+PS D:\repository\once> go tool pprof outCpuProf.txt
+File: ___7go_build_once.exe
+Build ID: C:\Users\Алексей\AppData\Local\JetBrains\GoLand2024.3\tmp\GoLand\___7go_build_once.exe2025-04-30 10:43:09.8195427 +0500 +05
+Type: cpu
+Time: 2025-04-30 10:43:09 +05
+Duration: 212.89ms, Total samples = 80ms (37.58%)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) list .
+Total: 80ms
+ROUTINE ======================== internal/poll.(*FD).Read in C:\go\go1.24.2\src\internal\poll\fd_windows.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .    405:func (fd *FD) Read(buf []byte) (int, error) {
+         .          .    406:   if err := fd.readLock(); err != nil {
+         .          .    407:           return 0, err
+         .          .    408:   }
+         .          .    409:   defer fd.readUnlock()
+         .          .    410:
+         .          .    411:   if len(buf) > maxRW {
+         .          .    412:           buf = buf[:maxRW]
+         .          .    413:   }
+         .          .    414:
+         .          .    415:   var n int
+         .          .    416:   var err error
+         .          .    417:   if fd.isFile {
+         .          .    418:           fd.l.Lock()
+         .          .    419:           defer fd.l.Unlock()
+         .          .    420:           switch fd.kind {
+         .          .    421:           case kindConsole:
+         .          .    422:                   n, err = fd.readConsole(buf)
+         .          .    423:           default:
+         .       30ms    424:                   n, err = syscall.Read(fd.Sysfd, buf)
+         .          .    425:                   if fd.kind == kindPipe && err == syscall.ERROR_OPERATION_ABORTED {
+         .          .    426:                           // Close uses CancelIoEx to interrupt concurrent I/O for pipes.
+         .          .    427:                           // If the fd is a pipe and the Read was interrupted by CancelIoEx,
+         .          .    428:                           // we assume it is interrupted by Close.
+         .          .    429:                           err = ErrFileClosing
+ROUTINE ======================== internal/syscall/windows/registry.Key.GetMUIStringValue in C:\go\go1.24.2\src\internal\syscall\windows\registry\value.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    118:func (k Key) GetMUIStringValue(name string) (string, error) {
+         .          .    119:   pname, err := syscall.UTF16PtrFromString(name)
+         .          .    120:   if err != nil {
+         .          .    121:           return "", err
+         .          .    122:   }
+         .          .    123:
+         .          .    124:   buf := make([]uint16, 1024)
+         .          .    125:   var buflen uint32
+         .          .    126:   var pdir *uint16
+         .          .    127:
+         .       10ms    128:   err = regLoadMUIString(syscall.Handle(k), pname, &buf[0], uint32(len(buf)), &buflen, 0, pdir)
+         .          .    129:   if err == syscall.ERROR_FILE_NOT_FOUND { // Try fallback path
+         .          .    130:
+         .          .    131:           // Try to resolve the string value using the system directory as
+         .          .    132:           // a DLL search path; this assumes the string value is of the form
+         .          .    133:           // @[path]\dllname,-strID but with no path given, e.g. @tzres.dll,-320.
+ROUTINE ======================== internal/syscall/windows/registry.regLoadMUIString in C:\go\go1.24.2\src\internal\syscall\windows\registry\zsyscall_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     84:func regLoadMUIString(key syscall.Handle, name *uint16, buf *uint16, buflen uint32, buflenCopied *uint32, flags uint32, dir *uint16) (regerrno error) {
+         .       10ms     85:   r0, _, _ := syscall.Syscall9(procRegLoadMUIStringW.Addr(), 7, uintptr(key), uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(buf)), uintptr(buflen), uintptr(unsafe.Pointer(buflenCopied)), uintptr(flags), uintptr(unsafe.Pointer(dir)), 0, 0)
+         .          .     86:   if r0 != 0 {
+         .          .     87:           regerrno = syscall.Errno(r0)
+         .          .     88:   }
+         .          .     89:   return
+         .          .     90:}
+ROUTINE ======================== main.main in D:\repository\once\main.go
+         0       70ms (flat, cum) 87.50% of Total
+         .          .      9:func main() {
+         .          .     10:
+         .          .     11:   conf := digger.Config{SourceDirectory: `C:\tmp\007\MedgenInput`}
+         .          .     12:
+         .          .     13:   d, err := digger.New(conf, []string{})
+         .          .     14:   if err != nil {
+         .          .     15:           panic(err)
+         .          .     16:   }
+         .          .     17:
+         .          .     18:   f, err := os.Create("outCpuProf.out")
+         .          .     19:   if err != nil {
+         .          .     20:           panic(err)
+         .          .     21:   }
+         .          .     22:
+         .          .     23:   err = pprof.StartCPUProfile(f)
+         .          .     24:   if err != nil {
+         .          .     25:           panic(err)
+         .          .     26:   }
+         .          .     27:
+         .       70ms     28:   _, err = d.FindNewOrderNumbers()
+         .          .     29:   if err != nil {
+         .          .     30:           panic(err)
+         .          .     31:   }
+         .          .     32:
+         .          .     33:   defer pprof.StopCPUProfile()
+ROUTINE ======================== once/internal/digger.(*Digger).FindNewOrderNumbers in D:\repository\once\internal\digger\common.go
+         0       70ms (flat, cum) 87.50% of Total
+         .          .     37:func (d *Digger) FindNewOrderNumbers() ([]string, error) {
+         .          .     38:
+         .          .     39:   entries, err := os.ReadDir(d.config.SourceDirectory)
+         .          .     40:   if err != nil {
+         .          .     41:           return nil, err
+         .          .     42:   }
+         .          .     43:
+         .          .     44:   newOrderNumbers := make([]string, len(entries))
+         .          .     45:
+         .          .     46:   for i, entry := range entries {
+         .       70ms     47:           orderNumber, err := extractOrderNumber(filepath.Join(d.config.SourceDirectory, entry.Name()))
+         .          .     48:           if err != nil {
+         .          .     49:                   return nil, err
+         .          .     50:           }
+         .          .     51:           newOrderNumbers[i] = orderNumber
+         .          .     52:           if i%100 == 0 {
+ROUTINE ======================== once/internal/digger.extractOrderNumber in D:\repository\once\internal\digger\internal.go
+         0       70ms (flat, cum) 87.50% of Total
+         .          .     11:func extractOrderNumber(filename string) (string, error) {
+         .          .     12:
+         .          .     13:   var orderNumber []byte
+         .          .     14:
+         .       70ms     15:   content, err := os.ReadFile(filename)
+         .          .     16:   if err != nil {
+         .          .     17:           return "", err
+         .          .     18:   }
+         .          .     19:
+         .          .     20:   lines := bytes.Split(content, []byte{sep})
+ROUTINE ======================== os.(*File).Read in C:\go\go1.24.2\src\os\file.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .    120:func (f *File) Read(b []byte) (n int, err error) {
+         .          .    121:   if err := f.checkValid("read"); err != nil {
+         .          .    122:           return 0, err
+         .          .    123:   }
+         .       30ms    124:   n, e := f.read(b)
+         .          .    125:   return n, f.wrapErr("read", e)
+         .          .    126:}
+         .          .    127:
+         .          .    128:// ReadAt reads len(b) bytes from the File starting at byte offset off.
+         .          .    129:// It returns the number of bytes read and the error, if any.
+ROUTINE ======================== os.(*File).Stat in C:\go\go1.24.2\src\os\stat_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     16:func (file *File) Stat() (FileInfo, error) {
+         .          .     17:   if file == nil {
+         .          .     18:           return nil, ErrInvalid
+         .          .     19:   }
+         .       10ms     20:   return statHandle(file.name, file.pfd.Sysfd)
+         .          .     21:}
+         .          .     22:
+         .          .     23:// stat implements both Stat and Lstat of a file.
+         .          .     24:func stat(funcname, name string, followSurrogates bool) (FileInfo, error) {
+         .          .     25:   if len(name) == 0 {
+ROUTINE ======================== os.(*File).read in C:\go\go1.24.2\src\os\file_posix.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .     28:func (f *File) read(b []byte) (n int, err error) {
+         .       30ms     29:   n, err = f.pfd.Read(b)
+         .          .     30:   runtime.KeepAlive(f)
+         .          .     31:   return n, err
+         .          .     32:}
+         .          .     33:
+         .          .     34:// pread reads len(b) bytes from the File starting at byte offset off.
+ROUTINE ======================== os.Open in C:\go\go1.24.2\src\os\file.go
+         0       20ms (flat, cum) 25.00% of Total
+         .          .    369:func Open(name string) (*File, error) {
+         .       20ms    370:   return OpenFile(name, O_RDONLY, 0)
+         .          .    371:}
+         .          .    372:
+         .          .    373:// Create creates or truncates the named file. If the file already exists,
+         .          .    374:// it is truncated. If the file does not exist, it is created with mode 0o666
+         .          .    375:// (before umask). If successful, methods on the returned File can
+ROUTINE ======================== os.OpenFile in C:\go\go1.24.2\src\os\file.go
+         0       20ms (flat, cum) 25.00% of Total
+         .          .    390:func OpenFile(name string, flag int, perm FileMode) (*File, error) {
+         .          .    391:   testlog.Open(name)
+         .       20ms    392:   f, err := openFileNolog(name, flag, perm)
+         .          .    393:   if err != nil {
+         .          .    394:           return nil, err
+         .          .    395:   }
+         .          .    396:   f.appendMode = flag&O_APPEND != 0
+         .          .    397:
+ROUTINE ======================== os.ReadFile in C:\go\go1.24.2\src\os\file.go
+         0       70ms (flat, cum) 87.50% of Total
+         .          .    799:func ReadFile(name string) ([]byte, error) {
+         .       20ms    800:   f, err := Open(name)
+         .          .    801:   if err != nil {
+         .          .    802:           return nil, err
+         .          .    803:   }
+         .          .    804:   defer f.Close()
+         .       50ms    805:   return readFileContents(f)
+         .          .    806:}
+         .          .    807:
+         .          .    808:func readFileContents(f *File) ([]byte, error) {
+         .          .    809:   var size int
+         .          .    810:   if info, err := f.Stat(); err == nil {
+ROUTINE ======================== os.newFileStatFromGetFileInformationByHandle in C:\go\go1.24.2\src\os\types_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     46:func newFileStatFromGetFileInformationByHandle(path string, h syscall.Handle) (fs *fileStat, err error) {
+         .          .     47:   var d syscall.ByHandleFileInformation
+         .       10ms     48:   err = syscall.GetFileInformationByHandle(h, &d)
+         .          .     49:   if err != nil {
+         .          .     50:           return nil, &PathError{Op: "GetFileInformationByHandle", Path: path, Err: err}
+         .          .     51:   }
+         .          .     52:
+         .          .     53:   var reparseTag uint32
+ROUTINE ======================== os.openFileNolog in C:\go\go1.24.2\src\os\file_windows.go
+         0       20ms (flat, cum) 25.00% of Total
+         .          .    101:func openFileNolog(name string, flag int, perm FileMode) (*File, error) {
+         .          .    102:   if name == "" {
+         .          .    103:           return nil, &PathError{Op: "open", Path: name, Err: syscall.ENOENT}
+         .          .    104:   }
+         .          .    105:   path := fixLongPath(name)
+         .       20ms    106:   r, err := syscall.Open(path, flag|syscall.O_CLOEXEC, syscallMode(perm))
+         .          .    107:   if err != nil {
+         .          .    108:           return nil, &PathError{Op: "open", Path: name, Err: err}
+         .          .    109:   }
+         .          .    110:   return newFile(r, name, "file"), nil
+         .          .    111:}
+ROUTINE ======================== os.readFileContents in C:\go\go1.24.2\src\os\file.go
+         0       50ms (flat, cum) 62.50% of Total
+         .          .    808:func readFileContents(f *File) ([]byte, error) {
+         .          .    809:   var size int
+         .       10ms    810:   if info, err := f.Stat(); err == nil {
+         .          .    811:           size64 := info.Size()
+         .          .    812:           if int64(int(size64)) == size64 {
+         .          .    813:                   size = int(size64)
+         .          .    814:           }
+         .          .    815:   }
+         .          .    816:   size++ // one byte for final read at EOF
+         .          .    817:
+         .          .    818:   // If a file claims a small size, read at least 512 bytes.
+         .          .    819:   // In particular, files in Linux's /proc claim size 0 but
+         .          .    820:   // then do not work right if read in small pieces,
+         .          .    821:   // so an initial read of 1 byte would not work correctly.
+         .          .    822:   if size < 512 {
+         .          .    823:           size = 512
+         .          .    824:   }
+         .          .    825:
+         .       10ms    826:   data := make([]byte, 0, size)
+         .          .    827:   for {
+         .       30ms    828:           n, err := f.Read(data[len(data):cap(data)])
+         .          .    829:           data = data[:len(data)+n]
+         .          .    830:           if err != nil {
+         .          .    831:                   if err == io.EOF {
+         .          .    832:                           err = nil
+         .          .    833:                   }
+ROUTINE ======================== os.statHandle in C:\go\go1.24.2\src\os\stat_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    104:func statHandle(name string, h syscall.Handle) (FileInfo, error) {
+         .          .    105:   ft, err := syscall.GetFileType(h)
+         .          .    106:   if err != nil {
+         .          .    107:           return nil, &PathError{Op: "GetFileType", Path: name, Err: err}
+         .          .    108:   }
+         .          .    109:   switch ft {
+         .          .    110:   case syscall.FILE_TYPE_PIPE, syscall.FILE_TYPE_CHAR:
+         .          .    111:           return &fileStat{name: filepathlite.Base(name), filetype: ft}, nil
+         .          .    112:   }
+         .       10ms    113:   fs, err := newFileStatFromGetFileInformationByHandle(name, h)
+         .          .    114:   if err != nil {
+         .          .    115:           return nil, err
+         .          .    116:   }
+         .          .    117:   fs.filetype = ft
+         .          .    118:   return fs, err
+ROUTINE ======================== runtime.cgocall in C:\go\go1.24.2\src\runtime\cgocall.go
+      60ms       70ms (flat, cum) 87.50% of Total
+         .          .    134:func cgocall(fn, arg unsafe.Pointer) int32 {
+         .          .    135:   if !iscgo && GOOS != "solaris" && GOOS != "illumos" && GOOS != "windows" {
+         .          .    136:           throw("cgocall unavailable")
+         .          .    137:   }
+         .          .    138:
+         .          .    139:   if fn == nil {
+         .          .    140:           throw("cgocall nil")
+         .          .    141:   }
+         .          .    142:
+         .          .    143:   if raceenabled {
+         .          .    144:           racereleasemerge(unsafe.Pointer(&racecgosync))
+         .          .    145:   }
+         .          .    146:
+         .          .    147:   mp := getg().m
+         .          .    148:   mp.ncgocall++
+         .          .    149:
+         .          .    150:   // Reset traceback.
+         .          .    151:   mp.cgoCallers[0] = 0
+         .          .    152:
+         .          .    153:   // Announce we are entering a system call
+         .          .    154:   // so that the scheduler knows to create another
+         .          .    155:   // M to run goroutines while we are in the
+         .          .    156:   // foreign code.
+         .          .    157:   //
+         .          .    158:   // The call to asmcgocall is guaranteed not to
+         .          .    159:   // grow the stack and does not allocate memory,
+         .          .    160:   // so it is safe to call while "in a system call", outside
+         .          .    161:   // the $GOMAXPROCS accounting.
+         .          .    162:   //
+         .          .    163:   // fn may call back into Go code, in which case we'll exit the
+         .          .    164:   // "system call", run the Go code (which may grow the stack),
+         .          .    165:   // and then re-enter the "system call" reusing the PC and SP
+         .          .    166:   // saved by entersyscall here.
+      60ms       60ms    167:   entersyscall()
+         .          .    168:
+         .          .    169:   // Tell asynchronous preemption that we're entering external
+         .          .    170:   // code. We do this after entersyscall because this may block
+         .          .    171:   // and cause an async preemption to fail, but at this point a
+         .          .    172:   // sync preemption will succeed (though this is not a matter
+         .          .    173:   // of correctness).
+         .          .    174:   osPreemptExtEnter(mp)
+         .          .    175:
+         .          .    176:   mp.incgo = true
+         .          .    177:   // We use ncgo as a check during execution tracing for whether there is
+         .          .    178:   // any C on the call stack, which there will be after this point. If
+         .          .    179:   // there isn't, we can use frame pointer unwinding to collect call
+         .          .    180:   // stacks efficiently. This will be the case for the first Go-to-C call
+         .          .    181:   // on a stack, so it's preferable to update it here, after we emit a
+         .          .    182:   // trace event in entersyscall above.
+         .          .    183:   mp.ncgo++
+         .          .    184:
+         .          .    185:   errno := asmcgocall(fn, arg)
+         .          .    186:
+         .          .    187:   // Update accounting before exitsyscall because exitsyscall may
+         .          .    188:   // reschedule us on to a different M.
+         .          .    189:   mp.incgo = false
+         .          .    190:   mp.ncgo--
+         .          .    191:
+         .          .    192:   osPreemptExtExit(mp)
+         .          .    193:
+         .          .    194:   // Save current syscall parameters, so m.winsyscall can be
+         .          .    195:   // used again if callback decide to make syscall.
+         .          .    196:   winsyscall := mp.winsyscall
+         .          .    197:
+         .       10ms    198:   exitsyscall()
+         .          .    199:
+         .          .    200:   getg().m.winsyscall = winsyscall
+         .          .    201:
+         .          .    202:   // Note that raceacquire must be called only after exitsyscall has
+         .          .    203:   // wired this M to a P.
+ROUTINE ======================== runtime.exitsyscall in C:\go\go1.24.2\src\runtime\proc.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .   4663:func exitsyscall() {
+         .          .   4664:   gp := getg()
+         .          .   4665:
+         .          .   4666:   gp.m.locks++ // see comment in entersyscall
+         .          .   4667:   if sys.GetCallerSP() > gp.syscallsp {
+         .          .   4668:           throw("exitsyscall: syscall frame is no longer valid")
+         .          .   4669:   }
+         .          .   4670:
+         .          .   4671:   gp.waitsince = 0
+         .          .   4672:   oldp := gp.m.oldp.ptr()
+         .          .   4673:   gp.m.oldp = 0
+         .       10ms   4674:   if exitsyscallfast(oldp) {
+         .          .   4675:           // When exitsyscallfast returns success, we have a P so can now use
+         .          .   4676:           // write barriers
+         .          .   4677:           if goroutineProfile.active {
+         .          .   4678:                   // Make sure that gp has had its stack written out to the goroutine
+         .          .   4679:                   // profile, exactly as it was when the goroutine profiler first
+ROUTINE ======================== runtime.exitsyscallfast in C:\go\go1.24.2\src\runtime\proc.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .   4749:func exitsyscallfast(oldp *p) bool {
+         .          .   4750:   // Freezetheworld sets stopwait but does not retake P's.
+         .          .   4751:   if sched.stopwait == freezeStopWait {
+         .          .   4752:           return false
+         .          .   4753:   }
+         .          .   4754:
+         .          .   4755:   // Try to re-acquire the last P.
+         .          .   4756:   trace := traceAcquire()
+         .          .   4757:   if oldp != nil && oldp.status == _Psyscall && atomic.Cas(&oldp.status, _Psyscall, _Pidle) {
+         .          .   4758:           // There's a cpu for us, so we can run.
+         .          .   4759:           wirep(oldp)
+         .       10ms   4760:           exitsyscallfast_reacquired(trace)
+         .          .   4761:           if trace.ok() {
+         .          .   4762:                   traceRelease(trace)
+         .          .   4763:           }
+         .          .   4764:           return true
+         .          .   4765:   }
+ROUTINE ======================== runtime.exitsyscallfast_reacquired in C:\go\go1.24.2\src\runtime\proc.go
+      10ms       10ms (flat, cum) 12.50% of Total
+         .          .   4788:func exitsyscallfast_reacquired(trace traceLocker) {
+         .          .   4789:   gp := getg()
+      10ms       10ms   4790:   if gp.m.syscalltick != gp.m.p.ptr().syscalltick {
+         .          .   4791:           if trace.ok() {
+         .          .   4792:                   // The p was retaken and then enter into syscall again (since gp.m.syscalltick has changed).
+         .          .   4793:                   // traceGoSysBlock for this syscall was already emitted,
+         .          .   4794:                   // but here we effectively retake the p from the new syscall running on the same p.
+         .          .   4795:                   systemstack(func() {
+ROUTINE ======================== runtime.main in C:\go\go1.24.2\src\runtime\proc.go
+         0       70ms (flat, cum) 87.50% of Total
+         .          .    147:func main() {
+         .          .    148:   mp := getg().m
+         .          .    149:
+         .          .    150:   // Racectx of m0->g0 is used only as the parent of the main goroutine.
+         .          .    151:   // It must not be used for anything else.
+         .          .    152:   mp.g0.racectx = 0
+         .          .    153:
+         .          .    154:   // Max stack size is 1 GB on 64-bit, 250 MB on 32-bit.
+         .          .    155:   // Using decimal instead of binary GB and MB because
+         .          .    156:   // they look nicer in the stack overflow failure message.
+         .          .    157:   if goarch.PtrSize == 8 {
+         .          .    158:           maxstacksize = 1000000000
+         .          .    159:   } else {
+         .          .    160:           maxstacksize = 250000000
+         .          .    161:   }
+         .          .    162:
+         .          .    163:   // An upper limit for max stack size. Used to avoid random crashes
+         .          .    164:   // after calling SetMaxStack and trying to allocate a stack that is too big,
+         .          .    165:   // since stackalloc works with 32-bit sizes.
+         .          .    166:   maxstackceiling = 2 * maxstacksize
+         .          .    167:
+         .          .    168:   // Allow newproc to start new Ms.
+         .          .    169:   mainStarted = true
+         .          .    170:
+         .          .    171:   if haveSysmon {
+         .          .    172:           systemstack(func() {
+         .          .    173:                   newm(sysmon, nil, -1)
+         .          .    174:           })
+         .          .    175:   }
+         .          .    176:
+         .          .    177:   // Lock the main goroutine onto this, the main OS thread,
+         .          .    178:   // during initialization. Most programs won't care, but a few
+         .          .    179:   // do require certain calls to be made by the main thread.
+         .          .    180:   // Those can arrange for main.main to run in the main thread
+         .          .    181:   // by calling runtime.LockOSThread during initialization
+         .          .    182:   // to preserve the lock.
+         .          .    183:   lockOSThread()
+         .          .    184:
+         .          .    185:   if mp != &m0 {
+         .          .    186:           throw("runtime.main not on m0")
+         .          .    187:   }
+         .          .    188:
+         .          .    189:   // Record when the world started.
+         .          .    190:   // Must be before doInit for tracing init.
+         .          .    191:   runtimeInitTime = nanotime()
+         .          .    192:   if runtimeInitTime == 0 {
+         .          .    193:           throw("nanotime returning zero")
+         .          .    194:   }
+         .          .    195:
+         .          .    196:   if debug.inittrace != 0 {
+         .          .    197:           inittrace.id = getg().goid
+         .          .    198:           inittrace.active = true
+         .          .    199:   }
+         .          .    200:
+         .          .    201:   doInit(runtime_inittasks) // Must be before defer.
+         .          .    202:
+         .          .    203:   // Defer unlock so that runtime.Goexit during init does the unlock too.
+         .          .    204:   needUnlock := true
+         .          .    205:   defer func() {
+         .          .    206:           if needUnlock {
+         .          .    207:                   unlockOSThread()
+         .          .    208:           }
+         .          .    209:   }()
+         .          .    210:
+         .          .    211:   gcenable()
+         .          .    212:
+         .          .    213:   main_init_done = make(chan bool)
+         .          .    214:   if iscgo {
+         .          .    215:           if _cgo_pthread_key_created == nil {
+         .          .    216:                   throw("_cgo_pthread_key_created missing")
+         .          .    217:           }
+         .          .    218:
+         .          .    219:           if _cgo_thread_start == nil {
+         .          .    220:                   throw("_cgo_thread_start missing")
+         .          .    221:           }
+         .          .    222:           if GOOS != "windows" {
+         .          .    223:                   if _cgo_setenv == nil {
+         .          .    224:                           throw("_cgo_setenv missing")
+         .          .    225:                   }
+         .          .    226:                   if _cgo_unsetenv == nil {
+         .          .    227:                           throw("_cgo_unsetenv missing")
+         .          .    228:                   }
+         .          .    229:           }
+         .          .    230:           if _cgo_notify_runtime_init_done == nil {
+         .          .    231:                   throw("_cgo_notify_runtime_init_done missing")
+         .          .    232:           }
+         .          .    233:
+         .          .    234:           // Set the x_crosscall2_ptr C function pointer variable point to crosscall2.
+         .          .    235:           if set_crosscall2 == nil {
+         .          .    236:                   throw("set_crosscall2 missing")
+         .          .    237:           }
+         .          .    238:           set_crosscall2()
+         .          .    239:
+         .          .    240:           // Start the template thread in case we enter Go from
+         .          .    241:           // a C-created thread and need to create a new thread.
+         .          .    242:           startTemplateThread()
+         .          .    243:           cgocall(_cgo_notify_runtime_init_done, nil)
+         .          .    244:   }
+         .          .    245:
+         .          .    246:   // Run the initializing tasks. Depending on build mode this
+         .          .    247:   // list can arrive a few different ways, but it will always
+         .          .    248:   // contain the init tasks computed by the linker for all the
+         .          .    249:   // packages in the program (excluding those added at runtime
+         .          .    250:   // by package plugin). Run through the modules in dependency
+         .          .    251:   // order (the order they are initialized by the dynamic
+         .          .    252:   // loader, i.e. they are added to the moduledata linked list).
+         .          .    253:   for m := &firstmoduledata; m != nil; m = m.next {
+         .          .    254:           doInit(m.inittasks)
+         .          .    255:   }
+         .          .    256:
+         .          .    257:   // Disable init tracing after main init done to avoid overhead
+         .          .    258:   // of collecting statistics in malloc and newproc
+         .          .    259:   inittrace.active = false
+         .          .    260:
+         .          .    261:   close(main_init_done)
+         .          .    262:
+         .          .    263:   needUnlock = false
+         .          .    264:   unlockOSThread()
+         .          .    265:
+         .          .    266:   if isarchive || islibrary {
+         .          .    267:           // A program compiled with -buildmode=c-archive or c-shared
+         .          .    268:           // has a main, but it is not executed.
+         .          .    269:           if GOARCH == "wasm" {
+         .          .    270:                   // On Wasm, pause makes it return to the host.
+         .          .    271:                   // Unlike cgo callbacks where Ms are created on demand,
+         .          .    272:                   // on Wasm we have only one M. So we keep this M (and this
+         .          .    273:                   // G) for callbacks.
+         .          .    274:                   // Using the caller's SP unwinds this frame and backs to
+         .          .    275:                   // goexit. The -16 is: 8 for goexit's (fake) return PC,
+         .          .    276:                   // and pause's epilogue pops 8.
+         .          .    277:                   pause(sys.GetCallerSP() - 16) // should not return
+         .          .    278:                   panic("unreachable")
+         .          .    279:           }
+         .          .    280:           return
+         .          .    281:   }
+         .          .    282:   fn := main_main // make an indirect call, as the linker doesn't know the address of the main package when laying down the runtime
+         .       70ms    283:   fn()
+         .          .    284:   if raceenabled {
+         .          .    285:           runExitHooks(0) // run hooks now, since racefini does not return
+         .          .    286:           racefini()
+         .          .    287:   }
+         .          .    288:
+ROUTINE ======================== runtime.makeslice in C:\go\go1.24.2\src\runtime\slice.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    101:func makeslice(et *_type, len, cap int) unsafe.Pointer {
+         .          .    102:   mem, overflow := math.MulUintptr(et.Size_, uintptr(cap))
+         .          .    103:   if overflow || mem > maxAlloc || len < 0 || len > cap {
+         .          .    104:           // NOTE: Produce a 'len out of range' error instead of a
+         .          .    105:           // 'cap out of range' error when someone does make([]T, bignumber).
+         .          .    106:           // 'cap out of range' is true too, but since the cap is only being
+         .          .    107:           // supplied implicitly, saying len is clearer.
+         .          .    108:           // See golang.org/issue/4085.
+         .          .    109:           mem, overflow := math.MulUintptr(et.Size_, uintptr(len))
+         .          .    110:           if overflow || mem > maxAlloc || len < 0 {
+         .          .    111:                   panicmakeslicelen()
+         .          .    112:           }
+         .          .    113:           panicmakeslicecap()
+         .          .    114:   }
+         .          .    115:
+         .       10ms    116:   return mallocgc(mem, et, true)
+         .          .    117:}
+         .          .    118:
+         .          .    119:func makeslice64(et *_type, len64, cap64 int64) unsafe.Pointer {
+         .          .    120:   len := int(len64)
+         .          .    121:   if int64(len) != len64 {
+ROUTINE ======================== runtime.mallocgc in C:\go\go1.24.2\src\runtime\malloc.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .   1010:func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
+         .          .   1011:   if doubleCheckMalloc {
+         .          .   1012:           if gcphase == _GCmarktermination {
+         .          .   1013:                   throw("mallocgc called with gcphase == _GCmarktermination")
+         .          .   1014:           }
+         .          .   1015:   }
+         .          .   1016:
+         .          .   1017:   // Short-circuit zero-sized allocation requests.
+         .          .   1018:   if size == 0 {
+         .          .   1019:           return unsafe.Pointer(&zerobase)
+         .          .   1020:   }
+         .          .   1021:
+         .          .   1022:   // It's possible for any malloc to trigger sweeping, which may in
+         .          .   1023:   // turn queue finalizers. Record this dynamic lock edge.
+         .          .   1024:   // N.B. Compiled away if lockrank experiment is not enabled.
+         .          .   1025:   lockRankMayQueueFinalizer()
+         .          .   1026:
+         .          .   1027:   // Pre-malloc debug hooks.
+         .          .   1028:   if debug.malloc {
+         .          .   1029:           if x := preMallocgcDebug(size, typ); x != nil {
+         .          .   1030:                   return x
+         .          .   1031:           }
+         .          .   1032:   }
+         .          .   1033:
+         .          .   1034:   // For ASAN, we allocate extra memory around each allocation called the "redzone."
+         .          .   1035:   // These "redzones" are marked as unaddressable.
+         .          .   1036:   var asanRZ uintptr
+         .          .   1037:   if asanenabled {
+         .          .   1038:           asanRZ = redZoneSize(size)
+         .          .   1039:           size += asanRZ
+         .          .   1040:   }
+         .          .   1041:
+         .          .   1042:   // Assist the GC if needed.
+         .          .   1043:   if gcBlackenEnabled != 0 {
+         .          .   1044:           deductAssistCredit(size)
+         .          .   1045:   }
+         .          .   1046:
+         .          .   1047:   // Actually do the allocation.
+         .          .   1048:   var x unsafe.Pointer
+         .          .   1049:   var elemsize uintptr
+         .          .   1050:   if size <= maxSmallSize-mallocHeaderSize {
+         .          .   1051:           if typ == nil || !typ.Pointers() {
+         .          .   1052:                   if size < maxTinySize {
+         .          .   1053:                           x, elemsize = mallocgcTiny(size, typ, needzero)
+         .          .   1054:                   } else {
+         .       10ms   1055:                           x, elemsize = mallocgcSmallNoscan(size, typ, needzero)
+         .          .   1056:                   }
+         .          .   1057:           } else if heapBitsInSpan(size) {
+         .          .   1058:                   x, elemsize = mallocgcSmallScanNoHeader(size, typ, needzero)
+         .          .   1059:           } else {
+         .          .   1060:                   x, elemsize = mallocgcSmallScanHeader(size, typ, needzero)
+ROUTINE ======================== runtime.mallocgcSmallNoscan in C:\go\go1.24.2\src\runtime\malloc.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .   1254:func mallocgcSmallNoscan(size uintptr, typ *_type, needzero bool) (unsafe.Pointer, uintptr) {
+         .          .   1255:   // Set mp.mallocing to keep from being preempted by GC.
+         .          .   1256:   mp := acquirem()
+         .          .   1257:   if doubleCheckMalloc {
+         .          .   1258:           if mp.mallocing != 0 {
+         .          .   1259:                   throw("malloc deadlock")
+         .          .   1260:           }
+         .          .   1261:           if mp.gsignal == getg() {
+         .          .   1262:                   throw("malloc during signal")
+         .          .   1263:           }
+         .          .   1264:           if typ != nil && typ.Pointers() {
+         .          .   1265:                   throw("expected noscan type for noscan alloc")
+         .          .   1266:           }
+         .          .   1267:   }
+         .          .   1268:   mp.mallocing = 1
+         .          .   1269:
+         .          .   1270:   checkGCTrigger := false
+         .          .   1271:   c := getMCache(mp)
+         .          .   1272:   var sizeclass uint8
+         .          .   1273:   if size <= smallSizeMax-8 {
+         .          .   1274:           sizeclass = size_to_class8[divRoundUp(size, smallSizeDiv)]
+         .          .   1275:   } else {
+         .          .   1276:           sizeclass = size_to_class128[divRoundUp(size-smallSizeMax, largeSizeDiv)]
+         .          .   1277:   }
+         .          .   1278:   size = uintptr(class_to_size[sizeclass])
+         .          .   1279:   spc := makeSpanClass(sizeclass, true)
+         .          .   1280:   span := c.alloc[spc]
+         .          .   1281:   v := nextFreeFast(span)
+         .          .   1282:   if v == 0 {
+         .          .   1283:           v, span, checkGCTrigger = c.nextFree(spc)
+         .          .   1284:   }
+         .          .   1285:   x := unsafe.Pointer(v)
+         .          .   1286:   if needzero && span.needzero != 0 {
+         .       10ms   1287:           memclrNoHeapPointers(x, size)
+         .          .   1288:   }
+         .          .   1289:
+         .          .   1290:   // Ensure that the stores above that initialize x to
+         .          .   1291:   // type-safe memory and set the heap bits occur before
+         .          .   1292:   // the caller can make x observable to the garbage
+ROUTINE ======================== runtime.memclrNoHeapPointers in C:\go\go1.24.2\src\runtime\memclr_amd64.s
+      10ms       10ms (flat, cum) 12.50% of Total
+         .          .     15:TEXT runtime·memclrNoHeapPointers<ABIInternal>(SB), NOSPLIT, $0-16
+         .          .     16:   // AX = ptr
+         .          .     17:   // BX = n
+         .          .     18:   MOVQ    AX, DI  // DI = ptr
+         .          .     19:   XORQ    AX, AX
+         .          .     20:
+         .          .     21:   // MOVOU seems always faster than REP STOSQ when Enhanced REP STOSQ is not available.
+         .          .     22:tail:
+         .          .     23:   // BSR+branch table make almost all memmove/memclr benchmarks worse. Not worth doing.
+         .          .     24:   TESTQ   BX, BX
+         .          .     25:   JEQ     _0
+         .          .     26:   CMPQ    BX, $2
+         .          .     27:   JBE     _1or2
+         .          .     28:   CMPQ    BX, $4
+         .          .     29:   JBE     _3or4
+         .          .     30:   CMPQ    BX, $8
+         .          .     31:   JB      _5through7
+         .          .     32:   JE      _8
+         .          .     33:   CMPQ    BX, $16
+         .          .     34:   JBE     _9through16
+         .          .     35:   CMPQ    BX, $32
+         .          .     36:   JBE     _17through32
+         .          .     37:   CMPQ    BX, $64
+         .          .     38:   JBE     _33through64
+         .          .     39:   CMPQ    BX, $128
+         .          .     40:   JBE     _65through128
+         .          .     41:   CMPQ    BX, $256
+         .          .     42:   JBE     _129through256
+         .          .     43:
+         .          .     44:   CMPB    internal∕cpu·X86+const_offsetX86HasERMS(SB), $1 // enhanced REP MOVSB/STOSB
+         .          .     45:   JNE     skip_erms
+         .          .     46:
+         .          .     47:   // If the size is less than 2kb, do not use ERMS as it has a big start-up cost.
+         .          .     48:   // Table 3-4. Relative Performance of Memcpy() Using ERMSB Vs. 128-bit AVX
+         .          .     49:   // in the Intel Optimization Guide shows better performance for ERMSB starting
+         .          .     50:   // from 2KB. Benchmarks show the similar threshold for REP STOS vs AVX.
+         .          .     51:   CMPQ    BX, $2048
+         .          .     52:   JAE     loop_preheader_erms
+         .          .     53:
+         .          .     54:skip_erms:
+         .          .     55:#ifndef hasAVX2
+         .          .     56:   CMPB    internal∕cpu·X86+const_offsetX86HasAVX2(SB), $1
+         .          .     57:   JE      loop_preheader_avx2
+         .          .     58:   // TODO: for really big clears, use MOVNTDQ, even without AVX2.
+         .          .     59:
+         .          .     60:loop:
+         .          .     61:   MOVOU   X15, 0(DI)
+         .          .     62:   MOVOU   X15, 16(DI)
+         .          .     63:   MOVOU   X15, 32(DI)
+         .          .     64:   MOVOU   X15, 48(DI)
+         .          .     65:   MOVOU   X15, 64(DI)
+         .          .     66:   MOVOU   X15, 80(DI)
+         .          .     67:   MOVOU   X15, 96(DI)
+         .          .     68:   MOVOU   X15, 112(DI)
+         .          .     69:   MOVOU   X15, 128(DI)
+         .          .     70:   MOVOU   X15, 144(DI)
+         .          .     71:   MOVOU   X15, 160(DI)
+         .          .     72:   MOVOU   X15, 176(DI)
+         .          .     73:   MOVOU   X15, 192(DI)
+         .          .     74:   MOVOU   X15, 208(DI)
+         .          .     75:   MOVOU   X15, 224(DI)
+         .          .     76:   MOVOU   X15, 240(DI)
+         .          .     77:   SUBQ    $256, BX
+         .          .     78:   ADDQ    $256, DI
+         .          .     79:   CMPQ    BX, $256
+         .          .     80:   JAE     loop
+         .          .     81:   JMP     tail
+         .          .     82:#endif
+         .          .     83:
+         .          .     84:loop_preheader_avx2:
+         .          .     85:   VPXOR X0, X0, X0
+         .          .     86:   // For smaller sizes MOVNTDQ may be faster or slower depending on hardware.
+         .          .     87:   // For larger sizes it is always faster, even on dual Xeons with 30M cache.
+         .          .     88:   // TODO take into account actual LLC size. E. g. glibc uses LLC size/2.
+         .          .     89:   CMPQ    BX, $0x2000000
+         .          .     90:   JAE     loop_preheader_avx2_huge
+         .          .     91:
+         .          .     92:loop_avx2:
+      10ms       10ms     93:   VMOVDQU Y0, 0(DI)
+         .          .     94:   VMOVDQU Y0, 32(DI)
+         .          .     95:   VMOVDQU Y0, 64(DI)
+         .          .     96:   VMOVDQU Y0, 96(DI)
+         .          .     97:   SUBQ    $128, BX
+         .          .     98:   ADDQ    $128, DI
+ROUTINE ======================== runtime.syscall_syscalln in C:\go\go1.24.2\src\runtime\syscall_windows.go
+         0       70ms (flat, cum) 87.50% of Total
+         .          .    504:func syscall_syscalln(fn, n uintptr, args ...uintptr) (r1, r2, err uintptr) {
+         .          .    505:   if n > uintptr(len(args)) {
+         .          .    506:           panic("syscall: n > len(args)") // should not be reachable from user code
+         .          .    507:   }
+         .          .    508:   if n > maxArgs {
+         .          .    509:           panic("runtime: SyscallN has too many arguments")
+         .          .    510:   }
+         .          .    511:
+         .          .    512:   // The cgocall parameters are stored in m instead of in
+         .          .    513:   // the stack because the stack can move during fn if it
+         .          .    514:   // calls back into Go.
+         .          .    515:   c := &getg().m.winsyscall
+         .          .    516:   c.fn = fn
+         .          .    517:   c.n = n
+         .          .    518:   if c.n != 0 {
+         .          .    519:           c.args = uintptr(noescape(unsafe.Pointer(&args[0])))
+         .          .    520:   }
+         .       70ms    521:   cgocall(asmstdcallAddr, unsafe.Pointer(c))
+         .          .    522:   // cgocall may reschedule us on to a different M,
+         .          .    523:   // but it copies the return values into the new M's
+         .          .    524:   // so we can read them from there.
+         .          .    525:   c = &getg().m.winsyscall
+         .          .    526:   return c.r1, c.r2, c.err
+ROUTINE ======================== runtime/pprof.(*profileBuilder).readMapping in C:\go\go1.24.2\src\runtime\pprof\proto_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     15:func (b *profileBuilder) readMapping() {
+         .          .     16:   snap, err := createModuleSnapshot()
+         .          .     17:   if err != nil {
+         .          .     18:           // pprof expects a map entry, so fake one, when we haven't added anything yet.
+         .          .     19:           b.addMappingEntry(0, 0, 0, "", "", true)
+         .          .     20:           return
+         .          .     21:   }
+         .          .     22:   defer func() { _ = syscall.CloseHandle(snap) }()
+         .          .     23:
+         .          .     24:   var module windows.ModuleEntry32
+         .          .     25:   module.Size = uint32(windows.SizeofModuleEntry32)
+         .          .     26:   err = windows.Module32First(snap, &module)
+         .          .     27:   if err != nil {
+         .          .     28:           // pprof expects a map entry, so fake one, when we haven't added anything yet.
+         .          .     29:           b.addMappingEntry(0, 0, 0, "", "", true)
+         .          .     30:           return
+         .          .     31:   }
+         .          .     32:   for err == nil {
+         .          .     33:           exe := syscall.UTF16ToString(module.ExePath[:])
+         .          .     34:           b.addMappingEntry(
+         .          .     35:                   uint64(module.ModBaseAddr),
+         .          .     36:                   uint64(module.ModBaseAddr)+uint64(module.ModBaseSize),
+         .          .     37:                   0,
+         .          .     38:                   exe,
+         .       10ms     39:                   peBuildID(exe),
+         .          .     40:                   false,
+         .          .     41:           )
+         .          .     42:           err = windows.Module32Next(snap, &module)
+         .          .     43:   }
+         .          .     44:}
+ROUTINE ======================== runtime/pprof.newProfileBuilder in C:\go\go1.24.2\src\runtime\pprof\proto.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    259:func newProfileBuilder(w io.Writer) *profileBuilder {
+         .          .    260:   zw, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
+         .          .    261:   b := &profileBuilder{
+         .          .    262:           w:         w,
+         .          .    263:           zw:        zw,
+         .          .    264:           start:     time.Now(),
+         .          .    265:           strings:   []string{""},
+         .          .    266:           stringMap: map[string]int{"": 0},
+         .          .    267:           locs:      map[uintptr]locInfo{},
+         .          .    268:           funcs:     map[string]int{},
+         .          .    269:   }
+         .       10ms    270:   b.readMapping()
+         .          .    271:   return b
+         .          .    272:}
+         .          .    273:
+         .          .    274:// addCPUData adds the CPU profiling data to the profile.
+         .          .    275://
+ROUTINE ======================== runtime/pprof.peBuildID in C:\go\go1.24.2\src\runtime\pprof\pe.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     13:func peBuildID(file string) string {
+         .          .     14:   s, err := os.Stat(file)
+         .          .     15:   if err != nil {
+         .          .     16:           return file
+         .          .     17:   }
+         .       10ms     18:   return file + s.ModTime().String()
+         .          .     19:}
+ROUTINE ======================== runtime/pprof.profileWriter in C:\go\go1.24.2\src\runtime\pprof\pprof.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    867:func profileWriter(w io.Writer) {
+         .       10ms    868:   b := newProfileBuilder(w)
+         .          .    869:   var err error
+         .          .    870:   for {
+         .          .    871:           time.Sleep(100 * time.Millisecond)
+         .          .    872:           data, tags, eof := readProfile()
+         .          .    873:           if e := b.addCPUData(data, tags); e != nil && err == nil {
+ROUTINE ======================== sync.(*Once).Do in C:\go\go1.24.2\src\sync\once.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     52:func (o *Once) Do(f func()) {
+         .          .     53:   // Note: Here is an incorrect implementation of Do:
+         .          .     54:   //
+         .          .     55:   //      if o.done.CompareAndSwap(0, 1) {
+         .          .     56:   //              f()
+         .          .     57:   //      }
+         .          .     58:   //
+         .          .     59:   // Do guarantees that when it returns, f has finished.
+         .          .     60:   // This implementation would not implement that guarantee:
+         .          .     61:   // given two simultaneous calls, the winner of the cas would
+         .          .     62:   // call f, and the second would return immediately, without
+         .          .     63:   // waiting for the first's call to f to complete.
+         .          .     64:   // This is why the slow path falls back to a mutex, and why
+         .          .     65:   // the o.done.Store must be delayed until after f returns.
+         .          .     66:
+         .          .     67:   if o.done.Load() == 0 {
+         .          .     68:           // Outlined slow-path to allow inlining of the fast-path.
+         .       10ms     69:           o.doSlow(f)
+         .          .     70:   }
+         .          .     71:}
+         .          .     72:
+         .          .     73:func (o *Once) doSlow(f func()) {
+         .          .     74:   o.m.Lock()
+ROUTINE ======================== sync.(*Once).doSlow in C:\go\go1.24.2\src\sync\once.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     73:func (o *Once) doSlow(f func()) {
+         .          .     74:   o.m.Lock()
+         .          .     75:   defer o.m.Unlock()
+         .          .     76:   if o.done.Load() == 0 {
+         .          .     77:           defer o.done.Store(1)
+         .       10ms     78:           f()
+         .          .     79:   }
+         .          .     80:}
+ROUTINE ======================== syscall.GetFileInformationByHandle in C:\go\go1.24.2\src\syscall\zsyscall_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    765:func GetFileInformationByHandle(handle Handle, data *ByHandleFileInformation) (err error) {
+         .       10ms    766:   r1, _, e1 := Syscall(procGetFileInformationByHandle.Addr(), 2, uintptr(handle), uintptr(unsafe.Pointer(data)), 0)
+         .          .    767:   if r1 == 0 {
+         .          .    768:           err = errnoErr(e1)
+         .          .    769:   }
+         .          .    770:   return
+         .          .    771:}
+ROUTINE ======================== syscall.Open in C:\go\go1.24.2\src\syscall\syscall_windows.go
+         0       20ms (flat, cum) 25.00% of Total
+         .          .    344:func Open(name string, flag int, perm uint32) (fd Handle, err error) {
+         .          .    345:   if len(name) == 0 {
+         .          .    346:           return InvalidHandle, ERROR_FILE_NOT_FOUND
+         .          .    347:   }
+         .          .    348:   namep, err := UTF16PtrFromString(name)
+         .          .    349:   if err != nil {
+         .          .    350:           return InvalidHandle, err
+         .          .    351:   }
+         .          .    352:   var access uint32
+         .          .    353:   switch flag & (O_RDONLY | O_WRONLY | O_RDWR) {
+         .          .    354:   case O_RDONLY:
+         .          .    355:           access = GENERIC_READ
+         .          .    356:   case O_WRONLY:
+         .          .    357:           access = GENERIC_WRITE
+         .          .    358:   case O_RDWR:
+         .          .    359:           access = GENERIC_READ | GENERIC_WRITE
+         .          .    360:   }
+         .          .    361:   if flag&O_CREAT != 0 {
+         .          .    362:           access |= GENERIC_WRITE
+         .          .    363:   }
+         .          .    364:   if flag&O_APPEND != 0 {
+         .          .    365:           // Remove GENERIC_WRITE unless O_TRUNC is set, in which case we need it to truncate the file.
+         .          .    366:           // We can't just remove FILE_WRITE_DATA because GENERIC_WRITE without FILE_WRITE_DATA
+         .          .    367:           // starts appending at the beginning of the file rather than at the end.
+         .          .    368:           if flag&O_TRUNC == 0 {
+         .          .    369:                   access &^= GENERIC_WRITE
+         .          .    370:           }
+         .          .    371:           // Set all access rights granted by GENERIC_WRITE except for FILE_WRITE_DATA.
+         .          .    372:           access |= FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | _FILE_WRITE_EA | STANDARD_RIGHTS_WRITE | SYNCHRONIZE
+         .          .    373:   }
+         .          .    374:   sharemode := uint32(FILE_SHARE_READ | FILE_SHARE_WRITE)
+         .          .    375:   var sa *SecurityAttributes
+         .          .    376:   if flag&O_CLOEXEC == 0 {
+         .          .    377:           sa = makeInheritSa()
+         .          .    378:   }
+         .          .    379:   // We don't use CREATE_ALWAYS, because when opening a file with
+         .          .    380:   // FILE_ATTRIBUTE_READONLY these will replace an existing file
+         .          .    381:   // with a new, read-only one. See https://go.dev/issue/38225.
+         .          .    382:   //
+         .          .    383:   // Instead, we ftruncate the file after opening when O_TRUNC is set.
+         .          .    384:   var createmode uint32
+         .          .    385:   switch {
+         .          .    386:   case flag&(O_CREAT|O_EXCL) == (O_CREAT | O_EXCL):
+         .          .    387:           createmode = CREATE_NEW
+         .          .    388:   case flag&O_CREAT == O_CREAT:
+         .          .    389:           createmode = OPEN_ALWAYS
+         .          .    390:   default:
+         .          .    391:           createmode = OPEN_EXISTING
+         .          .    392:   }
+         .          .    393:   var attrs uint32 = FILE_ATTRIBUTE_NORMAL
+         .          .    394:   if perm&S_IWRITE == 0 {
+         .          .    395:           attrs = FILE_ATTRIBUTE_READONLY
+         .          .    396:   }
+         .          .    397:   if flag&O_WRONLY == 0 && flag&O_RDWR == 0 {
+         .          .    398:           // We might be opening or creating a directory.
+         .          .    399:           // CreateFile requires FILE_FLAG_BACKUP_SEMANTICS
+         .          .    400:           // to work with directories.
+         .          .    401:           attrs |= FILE_FLAG_BACKUP_SEMANTICS
+         .          .    402:   }
+         .          .    403:   if flag&O_SYNC != 0 {
+         .          .    404:           const _FILE_FLAG_WRITE_THROUGH = 0x80000000
+         .          .    405:           attrs |= _FILE_FLAG_WRITE_THROUGH
+         .          .    406:   }
+         .       20ms    407:   h, err := createFile(namep, access, sharemode, sa, createmode, attrs, 0)
+         .          .    408:   if h == InvalidHandle {
+         .          .    409:           if err == ERROR_ACCESS_DENIED && (flag&O_WRONLY != 0 || flag&O_RDWR != 0) {
+         .          .    410:                   // We should return EISDIR when we are trying to open a directory with write access.
+         .          .    411:                   fa, e1 := GetFileAttributes(namep)
+         .          .    412:                   if e1 == nil && fa&FILE_ATTRIBUTE_DIRECTORY != 0 {
+ROUTINE ======================== syscall.Read in C:\go\go1.24.2\src\syscall\syscall_windows.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .    430:func Read(fd Handle, p []byte) (n int, err error) {
+         .          .    431:   var done uint32
+         .       30ms    432:   e := ReadFile(fd, p, &done, nil)
+         .          .    433:   if e != nil {
+         .          .    434:           if e == ERROR_BROKEN_PIPE {
+         .          .    435:                   // NOTE(brainman): work around ERROR_BROKEN_PIPE is returned on reading EOF from stdin
+         .          .    436:                   return 0, nil
+         .          .    437:           }
+ROUTINE ======================== syscall.ReadFile in C:\go\go1.24.2\src\syscall\syscall_windows.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .    452:func ReadFile(fd Handle, p []byte, done *uint32, overlapped *Overlapped) error {
+         .       30ms    453:   err := readFile(fd, p, done, overlapped)
+         .          .    454:   if race.Enabled {
+         .          .    455:           if *done > 0 {
+         .          .    456:                   race.WriteRange(unsafe.Pointer(&p[0]), int(*done))
+         .          .    457:           }
+         .          .    458:           race.Acquire(unsafe.Pointer(&ioSync))
+ROUTINE ======================== syscall.Syscall in C:\go\go1.24.2\src\runtime\syscall_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    456:func syscall_Syscall(fn, nargs, a1, a2, a3 uintptr) (r1, r2, err uintptr) {
+         .       10ms    457:   return syscall_syscalln(fn, nargs, a1, a2, a3)
+         .          .    458:}
+         .          .    459:
+         .          .    460://go:linkname syscall_Syscall6 syscall.Syscall6
+         .          .    461://go:nosplit
+         .          .    462:func syscall_Syscall6(fn, nargs, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2, err uintptr) {
+ROUTINE ======================== syscall.Syscall6 in C:\go\go1.24.2\src\runtime\syscall_windows.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .    462:func syscall_Syscall6(fn, nargs, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2, err uintptr) {
+         .       30ms    463:   return syscall_syscalln(fn, nargs, a1, a2, a3, a4, a5, a6)
+         .          .    464:}
+         .          .    465:
+         .          .    466://go:linkname syscall_Syscall9 syscall.Syscall9
+         .          .    467://go:nosplit
+         .          .    468:func syscall_Syscall9(fn, nargs, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2, err uintptr) {
+ROUTINE ======================== syscall.Syscall9 in C:\go\go1.24.2\src\runtime\syscall_windows.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .    468:func syscall_Syscall9(fn, nargs, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2, err uintptr) {
+         .       30ms    469:   return syscall_syscalln(fn, nargs, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+         .          .    470:}
+         .          .    471:
+         .          .    472://go:linkname syscall_Syscall12 syscall.Syscall12
+         .          .    473://go:nosplit
+         .          .    474:func syscall_Syscall12(fn, nargs, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12 uintptr) (r1, r2, err uintptr) {
+ROUTINE ======================== syscall.createFile in C:\go\go1.24.2\src\syscall\zsyscall_windows.go
+         0       20ms (flat, cum) 25.00% of Total
+         .          .    505:func createFile(name *uint16, access uint32, mode uint32, sa *SecurityAttributes, createmode uint32, attrs uint32, templatefile int32) (handle Handle, err error) {
+         .       20ms    506:   r0, _, e1 := Syscall9(procCreateFileW.Addr(), 7, uintptr(unsafe.Pointer(name)), uintptr(access), uintptr(mode), uintptr(unsafe.Pointer(sa)), uintptr(createmode), uintptr(attrs), uintptr(templatefile), 0, 0)
+         .          .    507:   handle = Handle(r0)
+         .          .    508:   if handle == InvalidHandle || e1 == ERROR_ALREADY_EXISTS {
+         .          .    509:           err = errnoErr(e1)
+         .          .    510:   }
+         .          .    511:   return
+ROUTINE ======================== syscall.readFile in C:\go\go1.24.2\src\syscall\zsyscall_windows.go
+         0       30ms (flat, cum) 37.50% of Total
+         .          .   1015:func readFile(handle Handle, buf []byte, done *uint32, overlapped *Overlapped) (err error) {
+         .          .   1016:   var _p0 *byte
+         .          .   1017:   if len(buf) > 0 {
+         .          .   1018:           _p0 = &buf[0]
+         .          .   1019:   }
+         .       30ms   1020:   r1, _, e1 := Syscall6(procReadFile.Addr(), 5, uintptr(handle), uintptr(unsafe.Pointer(_p0)), uintptr(len(buf)), uintptr(unsafe.Pointer(done)), uintptr(unsafe.Pointer(overlapped)), 0)
+         .          .   1021:   if r1 == 0 {
+         .          .   1022:           err = errnoErr(e1)
+         .          .   1023:   }
+         .          .   1024:   return
+         .          .   1025:}
+ROUTINE ======================== time.(*Location).get in C:\go\go1.24.2\src\time\zoneinfo.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     91:func (l *Location) get() *Location {
+         .          .     92:   if l == nil {
+         .          .     93:           return &utcLoc
+         .          .     94:   }
+         .          .     95:   if l == &localLoc {
+         .       10ms     96:           localOnce.Do(initLocal)
+         .          .     97:   }
+         .          .     98:   return l
+         .          .     99:}
+         .          .    100:
+         .          .    101:// String returns a descriptive name for the time zone information,
+ROUTINE ======================== time.Time.AppendFormat in C:\go\go1.24.2\src\time\format.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    655:func (t Time) AppendFormat(b []byte, layout string) []byte {
+         .          .    656:   // Optimize for RFC3339 as it accounts for over half of all representations.
+         .          .    657:   switch layout {
+         .          .    658:   case RFC3339:
+         .          .    659:           return t.appendFormatRFC3339(b, false)
+         .          .    660:   case RFC3339Nano:
+         .          .    661:           return t.appendFormatRFC3339(b, true)
+         .          .    662:   default:
+         .       10ms    663:           return t.appendFormat(b, layout)
+         .          .    664:   }
+         .          .    665:}
+         .          .    666:
+         .          .    667:func (t Time) appendFormat(b []byte, layout string) []byte {
+         .          .    668:   name, offset, abs := t.locabs()
+ROUTINE ======================== time.Time.Format in C:\go\go1.24.2\src\time\format.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    639:func (t Time) Format(layout string) string {
+         .          .    640:   const bufSize = 64
+         .          .    641:   var b []byte
+         .          .    642:   max := len(layout) + 10
+         .          .    643:   if max < bufSize {
+         .          .    644:           var buf [bufSize]byte
+         .          .    645:           b = buf[:0]
+         .          .    646:   } else {
+         .          .    647:           b = make([]byte, 0, max)
+         .          .    648:   }
+         .       10ms    649:   b = t.AppendFormat(b, layout)
+         .          .    650:   return string(b)
+         .          .    651:}
+         .          .    652:
+         .          .    653:// AppendFormat is like [Time.Format] but appends the textual
+         .          .    654:// representation to b and returns the extended buffer.
+ROUTINE ======================== time.Time.String in C:\go\go1.24.2\src\time\format.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    546:func (t Time) String() string {
+         .       10ms    547:   s := t.Format("2006-01-02 15:04:05.999999999 -0700 MST")
+         .          .    548:
+         .          .    549:   // Format monotonic clock reading as m=±ddd.nnnnnnnnn.
+         .          .    550:   if t.wall&hasMonotonic != 0 {
+         .          .    551:           m2 := uint64(t.ext)
+         .          .    552:           sign := byte('+')
+ROUTINE ======================== time.Time.appendFormat in C:\go\go1.24.2\src\time\format.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    667:func (t Time) appendFormat(b []byte, layout string) []byte {
+         .       10ms    668:   name, offset, abs := t.locabs()
+         .          .    669:   days := abs.days()
+         .          .    670:
+         .          .    671:   var (
+         .          .    672:           year  int = -1
+         .          .    673:           month Month
+ROUTINE ======================== time.Time.locabs in C:\go\go1.24.2\src\time\time.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    785:func (t Time) locabs() (name string, offset int, abs absSeconds) {
+         .          .    786:   l := t.loc
+         .          .    787:   if l == nil || l == &localLoc {
+         .       10ms    788:           l = l.get()
+         .          .    789:   }
+         .          .    790:   // Avoid function call if we hit the local time cache.
+         .          .    791:   sec := t.unixSec()
+         .          .    792:   if l != &utcLoc {
+         .          .    793:           if l.cacheZone != nil && l.cacheStart <= sec && sec < l.cacheEnd {
+ROUTINE ======================== time.abbrev in C:\go\go1.24.2\src\time\zoneinfo_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     90:func abbrev(z *syscall.Timezoneinformation) (std, dst string) {
+         .          .     91:   stdName := syscall.UTF16ToString(z.StandardName[:])
+         .          .     92:   a, ok := abbrs[stdName]
+         .          .     93:   if !ok {
+         .          .     94:           dstName := syscall.UTF16ToString(z.DaylightName[:])
+         .          .     95:           // Perhaps stdName is not English. Try to convert it.
+         .       10ms     96:           englishName, err := toEnglishName(stdName, dstName)
+         .          .     97:           if err == nil {
+         .          .     98:                   a, ok = abbrs[englishName]
+         .          .     99:                   if ok {
+         .          .    100:                           return a.std, a.dst
+         .          .    101:                   }
+ROUTINE ======================== time.initLocal in C:\go\go1.24.2\src\time\zoneinfo_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    230:func initLocal() {
+         .          .    231:   var i syscall.Timezoneinformation
+         .          .    232:   if _, err := syscall.GetTimeZoneInformation(&i); err != nil {
+         .          .    233:           localLoc.name = "UTC"
+         .          .    234:           return
+         .          .    235:   }
+         .       10ms    236:   initLocalFromTZI(&i)
+         .          .    237:}
+ROUTINE ======================== time.initLocalFromTZI in C:\go\go1.24.2\src\time\zoneinfo_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .    137:func initLocalFromTZI(i *syscall.Timezoneinformation) {
+         .          .    138:   l := &localLoc
+         .          .    139:
+         .          .    140:   l.name = "Local"
+         .          .    141:
+         .          .    142:   nzone := 1
+         .          .    143:   if i.StandardDate.Month > 0 {
+         .          .    144:           nzone++
+         .          .    145:   }
+         .          .    146:   l.zone = make([]zone, nzone)
+         .          .    147:
+         .       10ms    148:   stdname, dstname := abbrev(i)
+         .          .    149:
+         .          .    150:   std := &l.zone[0]
+         .          .    151:   std.name = stdname
+         .          .    152:   if nzone == 1 {
+         .          .    153:           // No daylight savings.
+ROUTINE ======================== time.matchZoneKey in C:\go\go1.24.2\src\time\zoneinfo_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     25:func matchZoneKey(zones registry.Key, kname string, stdname, dstname string) (matched bool, err2 error) {
+         .          .     26:   k, err := registry.OpenKey(zones, kname, registry.READ)
+         .          .     27:   if err != nil {
+         .          .     28:           return false, err
+         .          .     29:   }
+         .          .     30:   defer k.Close()
+         .          .     31:
+         .          .     32:   var std, dlt string
+         .          .     33:   // Try MUI_Std and MUI_Dlt first, fallback to Std and Dlt if *any* error occurs
+         .          .     34:   std, err = k.GetMUIStringValue("MUI_Std")
+         .          .     35:   if err == nil {
+         .       10ms     36:           dlt, err = k.GetMUIStringValue("MUI_Dlt")
+         .          .     37:   }
+         .          .     38:   if err != nil { // Fallback to Std and Dlt
+         .          .     39:           if std, _, err = k.GetStringValue("Std"); err != nil {
+         .          .     40:                   return false, err
+         .          .     41:           }
+ROUTINE ======================== time.toEnglishName in C:\go\go1.24.2\src\time\zoneinfo_windows.go
+         0       10ms (flat, cum) 12.50% of Total
+         .          .     58:func toEnglishName(stdname, dstname string) (string, error) {
+         .          .     59:   k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones`, registry.ENUMERATE_SUB_KEYS|registry.QUERY_VALUE)
+         .          .     60:   if err != nil {
+         .          .     61:           return "", err
+         .          .     62:   }
+         .          .     63:   defer k.Close()
+         .          .     64:
+         .          .     65:   names, err := k.ReadSubKeyNames()
+         .          .     66:   if err != nil {
+         .          .     67:           return "", err
+         .          .     68:   }
+         .          .     69:   for _, name := range names {
+         .       10ms     70:           matched, err := matchZoneKey(k, name, stdname, dstname)
+         .          .     71:           if err == nil && matched {
+         .          .     72:                   return name, nil
+         .          .     73:           }
+         .          .     74:   }
+         .          .     75:   return "", errors.New(`English name for time zone "` + stdname + `" not found in registry`)
+(pprof)
+

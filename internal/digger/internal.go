@@ -3,6 +3,8 @@ package digger
 import (
 	"bufio"
 	"bytes"
+	"errors"
+	"io"
 	"log"
 	"os"
 )
@@ -22,6 +24,11 @@ func extractOrderNumber(path string) (string, error) {
 	for {
 
 		b, err := reader.ReadBytes(0x0d)
+
+		if errors.Is(err, io.EOF) {
+			return "", nil
+		}
+
 		if err != nil {
 			return "", err
 		}
@@ -40,5 +47,6 @@ func extractOrderNumber(path string) (string, error) {
 			return string(fields[2]), err
 		}
 	}
+
 	return "", err
 }
